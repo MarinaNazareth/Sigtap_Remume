@@ -58,7 +58,7 @@ df_key1['concat'] = df_key1['concat'].apply(escape_special_chars)
 df_key2['concat'] = df_key2['concat'].apply(escape_special_chars)
 
 
-#tentar correspondencia
+#tentar correspondencia por coluna concatenada
 from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 
@@ -92,3 +92,45 @@ df_key2['id_correspondente'] = df_key2['id_correspondente'].apply(remover_duplic
 writer = pd.ExcelWriter(r"C:\Users\Downloads\Remume-automatizado\remume_v1.xlsx", engine='xlsxwriter')
 df_key1.to_excel(writer, sheet_name='BA')
 df_key3.to_excel(writer, sheet_name='BH')
+
+#sigtap - correspondencia por conter a str
+
+df = pd.read_excel(r"C:\Users\Downloads\sigtap-automatizado\sigtap.xlsx", sheet_name ='sigtap')
+df_base = pd.read_excel(r"C:\Users\Downloads\sigtap-automatizado\sigtap.xlsx", sheet_name ='base')
+
+df_base['Conc'] = df_base['Conc'].astype(str)
+
+def escape_special_chars(string):
+    special_chars = ['\\', '^', '$', '.', '|', '?', '*', '+', '(', ')', '[', ']', '{', '}', ':']
+
+    for char in special_chars:
+        string = string.replace(char, '\\' + char)
+    
+    return string
+
+df_base['Conc'] = df_base['Conc'].apply(escape_special_chars)
+df_base['PA'] = df_base['PA'].apply(escape_special_chars)
+df_base['Un'] = df_base['Un'].apply(escape_special_chars)
+df['CONCAT'] = df['CONCAT'].apply(escape_special_chars)
+
+def id_correspondente(row):
+    mask = (df['CONCAT'].str.contains(row['PA'], regex=True) &
+           df['CONCAT'].str.contains(row['Conc'], regex=True) &
+           df['CONCAT'].str.contains(row['Un'], regex=True))
+    
+    if mask.any():
+        ids = df.loc[mask, 'id'].tolist()
+        return ids
+    return None
+
+def remover_duplicatas(lista):
+    if lista is None:
+        return []
+    return list(set(lista))
+
+df_base['sigtap'] = df_base.apply(id_correspondente, axis=1)
+df_base['sigtap'] = df_base['sigtap'].apply(remover_duplicatas)
+
+writer = pd.ExcelWriter(r"C:\Users\Downloads\Remume-automatizado\sigtap.xlsx", engine='xlsxwriter')
+df_base.to_excel(writer, sheet_name='sigtap')
+writer.save()
